@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📚 آموزش علوم</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Vazirmatn','Tahoma',sans-serif; }
+  body { min-height:100vh; background:linear-gradient(135deg,#0f2027,#203a43,#2c5364); color:#fff; padding:20px 20px 80px; }
+  .container { max-width:800px; margin:auto; }
+  h1 { text-align:center; margin-bottom:8px; font-size:26px; }
+  .subtitle { text-align:center; opacity:.7; margin-bottom:24px; font-size:14px; }
+  .card { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15);
+          border-radius:16px; padding:20px; margin-bottom:16px; backdrop-filter:blur(8px); }
+  .btn { display:block; width:100%; padding:14px; margin:8px 0; border:none; border-radius:12px;
+         font-size:16px; cursor:pointer; background:linear-gradient(135deg,#00b4db,#0083b0);
+         color:#fff; transition:.2s; text-align:right; text-decoration:none; }
+  .btn:hover { transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,180,219,.4); }
+  .btn.back { background:rgba(255,255,255,.15); text-align:center; }
+  .btn.cat { background:linear-gradient(135deg,#11998e,#38ef7d); color:#053; font-weight:bold; margin-top:8px; }
+  .btn.cat.empty { background:rgba(255,255,255,.12); color:#fff; font-weight:normal; }
+  .btn.cat span { float:left; }
+  .btn.upload { background:linear-gradient(135deg,#f7971e,#ffd200); color:#532; text-align:center; font-weight:bold; }
+  .btn.go { background:linear-gradient(135deg,#8e2de2,#4a00e0); text-align:center; font-weight:bold; }
+  input, select { width:100%; padding:12px; border-radius:10px; border:none; margin:6px 0; font-size:15px; }
+  label { font-size:13px; opacity:.85; display:block; margin-top:8px; }
+  .hidden { display:none; }
+  .admin-bar { position:fixed; bottom:16px; left:16px; background:rgba(0,0,0,.5);
+               padding:8px 16px; border-radius:20px; cursor:pointer; font-size:13px; border:1px solid rgba(255,255,255,.2); }
+  .cat-block { margin-bottom:18px; }
+  .cat-block h3 { font-size:15px; margin-bottom:6px; opacity:.9; }
+  .link-row { background:rgba(255,255,255,.1); border-radius:10px; padding:12px; margin:8px 0; }
+  .link-row .lk { font-size:12px; opacity:.7; word-break:break-all; direction:ltr; text-align:left; }
+  .link-row .row { display:flex; gap:8px; margin-top:8px; }
+  .link-row button { flex:1; padding:8px; border:none; border-radius:8px; cursor:pointer; font-size:13px; }
+  .edit-btn { background:#f39c12; color:#fff; }
+  .del-btn { background:#e74c3c; color:#fff; }
+  .warn { padding:12px; border-radius:10px; margin-bottom:12px; font-size:13px; line-height:1.8; }
+  .warn.off { background:#e67e22; color:#fff; }
+  .warn.err { background:#c0392b; color:#fff; }
+  .warn.ok  { background:#27ae60; color:#fff; }
+  .toast { position:fixed; top:20px; right:50%; transform:translateX(50%); background:#2ecc71; color:#fff;
+           padding:12px 24px; border-radius:10px; display:none; z-index:99; max-width:90%; text-align:center; }
+</style>
+<base target="_blank">
+</head>
+<body>
+<div class="container">
+  <h1>📚 آموزش علوم</h1>
+  <p class="subtitle">اینفوگرافی • آزمایش • پاورپوینت • فیلم آموزشی</p>
+
+  <div id="warn-box"></div>
+
+  <!-- صفحه‌ی درس‌ها -->
+  <div id="page-lessons" class="card">
+    <h2 style="margin-bottom:12px;">📖 یک درس را انتخاب کنید:</h2>
+    <div id="lesson-list"></div>
+  </div>
+
+  <!-- صفحه‌ی دسته‌ها -->
+  <div id="page-cats" class="card hidden">
+    <h2 id="cats-title" style="margin-bottom:12px;"></h2>
+    <div id="cat-list"></div>
+    <button class="btn back" onclick="refreshCats()">🔄 بروزرسانی از سرور</button>
+    <button class="btn back" onclick="goLessons()">🔙 بازگشت به لیست درس‌ها</button>
+  </div>
+
+  <!-- پنل مدیریت -->
+  <div id="page-admin" class="card hidden">
+    <h2 style="margin-bottom:12px;">🔐 پنل مدیریت — تنظیم لینک‌ها</h2>
+    <div id="login-box">
+      <p>رمز مدیریت را وارد کنید:</p>
+      <input type="password" id="pin" placeholder="••••">
+      <button class="btn" onclick="checkPin()">ورود</button>
+    </div>
+    <div id="admin-box" class="hidden">
+      <label>📚 درس:</label>
+      <select id="sel-lesson">
+        <option value="">— انتخاب کنید —</option>
+      </select>
+      <label>🗂 بخش:</label>
+      <select id="sel-cat">
+        <option value="">— انتخاب کنید —</option>
+      </select>
+      <label>✏️ عنوان دکمه (اختیاری):</label>
+      <input type="text" id="in-title" placeholder="مثلاً: فیلم آزمایش — قسمت ۱">
+      <label>🔗 لینک (آدرس سایت/درایو/آپارات و...):</label>
+      <input type="text" id="in-url" placeholder="https://..." dir="ltr" style="text-align:left;">
+      <button class="btn upload" onclick="saveLink()">💾 افزودن / ذخیره لینک</button>
+      <button class="btn go" onclick="syncNow()">☁️ همگام‌سازی با سرور</button>
+
+      <h3 style="margin:18px 0 8px;">📋 لینک‌های ثبت‌شده:</h3>
+      <div id="links-list"></div>
+      <button class="btn back" onclick="closeAdmin()">✅ بستن پنل</button>
+    </div>
+  </div>
+</div>
+
+<div class="admin-bar" onclick="openAdmin()">⚙️ مدیریت</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════ تنظیمات ═══════════════ */
+const ADMIN_PIN = "1234";
+
+const BIN_KEY = "$2a$10$uAlcPp5wNjkmBPmIvr3YneTwwzm8YlFtCH9mheMBXvxUs55l8VuXu";  // ← Master Key خودت
+const BIN_ID  = "6ab3e6fbffd5d16053270c52";  // ← شناسه‌ی Bin خودت
+/* ══════════════════════════════════════════ */
+
+const CATS = { info:"📷 اینفوگرافی", experiment:"🧪 آزمایش",
+               ppt:"📑 پاورپوینت", video:"🎬 فیلم آموزشی" };
+let state = { isAdmin:false, currentLesson:null, editIndex:null };
+const $ = id => document.getElementById(id);
+
+function toast(msg, ok=true){
+  const t=$("toast"); t.textContent=msg; t.style.background=ok?"#2ecc71":"#e74c3c";
+  t.style.display="block"; setTimeout(()=>t.style.display="none",2800);
+}
+
+function cloudConfigured(){
+  return BIN_KEY && BIN_ID && BIN_ID.length > 10 && !BIN_ID.includes("#");
+}
+
+/* ── ذخیره‌سازی ── */
+function getLocal(){ try{ return JSON.parse(localStorage.getItem("science_links")||"{}"); }catch(e){ return {}; } }
+function setLocal(d){ localStorage.setItem("science_links", JSON.stringify(d)); }
+
+async function loadData(){
+  if(!cloudConfigured()) return getLocal();
+  try{
+    const r = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+      headers:{ "X-Master-Key": BIN_KEY }
+    });
+    if(!r.ok){ console.warn("loadData:", r.status); return getLocal(); }
+    const j = await r.json();
+    const d = j.record || {};
+    setLocal(d);
+    return d;
+  }catch(e){ console.warn(e); return getLocal(); }
+}
+
+async function saveData(d){
+  setLocal(d);
+  if(!cloudConfigured()){ toast("فقط روی این دستگاه ذخیره شد", false); return false; }
+  try{
+    const r = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+      method:"PUT",
+      headers:{ "Content-Type":"application/json", "X-Master-Key": BIN_KEY },
+      body: JSON.stringify(d)
+    });
+    if(!r.ok){ console.warn("saveData:", r.status); toast("❌ خطای سرور " + r.status, false); return false; }
+    return true;
+  }catch(e){ console.warn(e); toast("❌ اتصال برقرار نشد", false); return false; }
+}
+
+/* ── اطمینان از اینکه مقدار یک کلید آرایه است ── */
+function asArray(v){
+  if(Array.isArray(v)) return v;
+  if(v && v.url) return [v];   // تبدیل ساختار قدیمی به آرایه
+  return [];
+}
+
+/* ── بررسی وضعیت ابری ── */
+(async function(){
+  if(!cloudConfigured()){
+    $("warn-box").innerHTML = `<div class="warn off">⚠️ حالت آفلاین: BIN_KEY/BIN_ID تنظیم نشده.</div>`;
+    return;
+  }
+  try{
+    const r = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`,
+      { headers:{ "X-Master-Key": BIN_KEY } });
+    $("warn-box").innerHTML = r.ok
+      ? `<div class="warn ok">✅ اتصال ابری برقرار است.</div>`
+      : `<div class="warn err">❌ اتصال ابری برقرار نشد (کد ${r.status}).</div>`;
+  }catch(e){
+    $("warn-box").innerHTML = `<div class="warn err">❌ خطای شبکه در اتصال به سرور.</div>`;
+  }
+})();
+
+/* ── صفحه‌ی درس‌ها ── */
+function renderLessons(){
+  let html="";
+  for(let i=1;i<=15;i++)
+    html+=`<button class="btn" onclick="openCats(${i})">📚 درس ${i}</button>`;
+  $("lesson-list").innerHTML=html;
+}
+
+/* ── صفحه‌ی دسته‌ها: هر بخش می‌تواند چند لینک داشته باشد ── */
+async function openCats(n){
+  state.currentLesson = n;
+  $("page-lessons").classList.add("hidden");
+  $("page-admin").classList.add("hidden");
+  $("cats-title").textContent = `📚 درس ${n}`;
+
+  const data = await loadData();
+  let html="";
+  for(const k in CATS){
+    const items = asArray(data[`${n}_${k}`]);
+    html += `<div class="cat-block"><h3>${CATS[k]}</h3>`;
+    if(items.length){
+      items.forEach(it=>{
+        html+=`<a class="btn cat" href="${it.url}" target="_blank" rel="noopener">
+                 ${it.title || CATS[k]} <span>⬅</span></a>`;
+      });
+    } else {
+      html+=`<button class="btn cat empty" onclick="toast('هنوز لینکی ثبت نشده', false)">
+               ${CATS[k]} — خالی <span>⬅</span></button>`;
+    }
+    html += `</div>`;
+  }
+  $("cat-list").innerHTML = html;
+  $("page-cats").classList.remove("hidden");
+}
+
+async function refreshCats(){ if(state.currentLesson) await openCats(state.currentLesson); }
+function goLessons(){
+  $("page-cats").classList.add("hidden");
+  $("page-admin").classList.add("hidden");
+  $("page-lessons").classList.remove("hidden");
+}
+
+/* ── پنل مدیریت ── */
+function openAdmin(){
+  $("page-lessons").classList.add("hidden");
+  $("page-cats").classList.add("hidden");
+  $("page-admin").classList.remove("hidden");
+  $("login-box").classList.toggle("hidden", state.isAdmin);
+  $("admin-box").classList.toggle("hidden", !state.isAdmin);
+  if(state.isAdmin){ fillSelects(); renderLinks(); }
+}
+function closeAdmin(){ goLessons(); }
+function checkPin(){
+  if($("pin").value === ADMIN_PIN){
+    state.isAdmin = true; openAdmin(); toast("✅ خوش آمدید!");
+  } else toast("❌ رمز اشتباه", false);
+}
+function fillSelects(){
+  const sl=$("sel-lesson"), sc=$("sel-cat");
+  if(sl.options.length > 1) return;
+  for(let i=1;i<=15;i++) sl.add(new Option(`درس ${i}`, i));
+  for(const k in CATS) sc.add(new Option(CATS[k], k));
+}
+
+/* ── نمایش لیست لینک‌ها در پنل ── */
+async function renderLinks(){
+  const data = await loadData();
+  let html="";
+  for(let i=1;i<=15;i++) for(const k in CATS){
+    const items = asArray(data[`${i}_${k}`]);
+    if(items.length){
+      html += `<div class="cat-block"><h3>📚 درس ${i} — ${CATS[k]}</h3>`;
+      items.forEach((it, idx)=>{
+        html += `<div class="link-row">
+          <b>${it.title || "(بدون عنوان)"}</b>
+          <div class="lk">${it.url}</div>
+          <div class="row">
+            <button class="edit-btn" onclick="editLink('${i}_${k}', ${idx})">✏️ ویرایش</button>
+            <button class="del-btn" onclick="delLink('${i}_${k}', ${idx})">🗑 حذف</button>
+          </div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+  }
+  $("links-list").innerHTML = html || "<p style='opacity:.7'>هنوز لینکی ثبت نشده است.</p>";
+}
+
+/* ── ذخیره یا افزودن لینک ── */
+async function saveLink(){
+  const l=$("sel-lesson").value, c=$("sel-cat").value;
+  const url=$("in-url").value.trim(), title=$("in-title").value.trim();
+  if(!l || !c){ toast("❌ درس و بخش را انتخاب کنید", false); return; }
+  if(!url){ toast("❌ لینک را وارد کنید", false); return; }
+
+  const data = await loadData();
+  const key = `${l}_${c}`;
+  const items = asArray(data[key]);
+
+  if(state.editIndex !== null && state.editIndex >= 0 && state.editIndex < items.length){
+    // ویرایش لینک موجود
+    items[state.editIndex] = { url, title };
+    toast("✏️ ویرایش شد");
+  } else {
+    // افزودن لینک جدید
+    items.push({ url, title });
+    toast("✅ لینک اضافه شد");
+  }
+
+  data[key] = items;
+  const ok = await saveData(data);
+  if(!ok) toast("❌ ذخیره روی سرور انجام نشد", false);
+
+  // پاک کردن فرم
+  $("in-url").value = "";
+  $("in-title").value = "";
+  state.editIndex = null;
+
+  renderLinks();
+  if(state.currentLesson) await openCats(state.currentLesson);
+}
+
+/* ── ویرایش لینک مشخص ── */
+async function editLink(key, idx){
+  const data = await loadData();
+  const items = asArray(data[key]);
+  const [l, c] = key.split("_");
+  $("sel-lesson").value = l;
+  $("sel-cat").value = c;
+  $("in-url").value = items[idx].url;
+  $("in-title").value = items[idx].title || "";
+  state.editIndex = idx;
+  window.scrollTo(0, 0);
+  toast("حالا مقدار را ویرایش و «افزودن / ذخیره» را بزن", true);
+}
+
+/* ── حذف یک لینک از لیست ── */
+async function delLink(key, idx){
+  const data = await loadData();
+  const items = asArray(data[key]);
+  items.splice(idx, 1);
+  if(items.length === 0) delete data[key];
+  else data[key] = items;
+
+  const ok = await saveData(data);
+  renderLinks();
+  toast(ok ? "🗑 حذف شد" : "❌ حذف روی سرور انجام نشد", ok);
+  if(state.currentLesson) await openCats(state.currentLesson);
+}
+
+async function syncNow(){
+  toast("در حال دریافت از سرور...");
+  await loadData();
+  await renderLinks();
+  if(state.currentLesson) await openCats(state.currentLesson);
+  toast("✅ همگام شد");
+}
+
+renderLessons();
+</script>
+</body>
+</html>
